@@ -183,6 +183,7 @@ Status HeapPage::DeleteRecord(RecordID rid)
 //------------------------------------------------------------------
 Status HeapPage::FirstRecord(RecordID& rid)
 {															// wc373
+	if (&rid == NULL) return FAIL;
 	for (int i=0; i<numOfSlots; i++) {
 		if (GetSlotAtIndex(i)->length != -1) {
 			rid.pageNo = pid;
@@ -203,7 +204,7 @@ Status HeapPage::FirstRecord(RecordID& rid)
 //------------------------------------------------------------------
 Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 {															// wc373
-	if (curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
+	if (&curRid == NULL || curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
 	for (int i=curRid.slotNo+1; i<numOfSlots; i++) {
 		if (GetSlotAtIndex(i)->length != -1){
 			nextRid.pageNo = pid;

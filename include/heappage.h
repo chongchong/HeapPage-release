@@ -20,7 +20,7 @@ protected :
 		short length;	// Length of the record.
 
 		Slot(short o, short l) {
-			offset = 0;
+			offset = o;
 			length = l;
 		}
 	};
@@ -87,6 +87,9 @@ public:
 
 	// Get the PageID of this page.
 	PageID PageNo();
+
+	// Check if there is any empty slot
+	Slot* getEmptySlot(short& index);
 
 	// Insert a record into the page.
 	Status InsertRecord(const char* recPtr, int recLen, RecordID& rid);

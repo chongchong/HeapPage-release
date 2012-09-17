@@ -143,6 +143,19 @@ Status HeapPage::CompressPage() {
 	return FAIL;
 }
 
+
+HeapPage::Slot* HeapPage::getEmptySlot(short& index){
+	short i=0;
+	for(i=0;i<numOfSlots;i++){
+		if (GetSlotAtIndex(i)->length ==-1) {
+			index=i;
+			return GetSlotAtIndex(i);
+		}
+	}
+	index=i;
+	return NULL;
+}
+
 //------------------------------------------------------------------
 // HeapPage::InsertRecord
 //
@@ -151,10 +164,29 @@ Status HeapPage::CompressPage() {
 // Purpose   : Insert a record into the page
 // Return    : OK if everything went OK, DONE if sufficient space is not available.
 //------------------------------------------------------------------
-Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)
-{
-	//TODO: add your code here
-	return FAIL;
+Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//cw474
+{																			
+	if (AvailableSpace()>=length) {
+		short index;
+		Slot* newslot=getEmptySlot(index);
+		if (newslot ==NULL){
+			newslot = AppendNewSlot();
+		}
+		if (newslot == NULL) return DONE;
+		if (freePtr-length<0) {
+			Status cs=CompressPage();
+			if (cs==FAIL) return FAIL;
+			newslot->offset=freePtr;
+			newslot->length=length;
+			freePtr = freePtr-length;
+			rid= *(RecordID *)recPtr; // need to consider the FAIL case here --cw474
+			rid.slotNo=index;
+			rid.pageNo=pid;
+			return OK;
+		}
+
+	} 
+	else return DONE;
 }
 
 //------------------------------------------------------------------

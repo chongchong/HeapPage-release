@@ -19,10 +19,10 @@ protected :
 		short offset;	// Offset of record from the start of data area.
 		short length;	// Length of the record.
 
-		Slot(short o, short l) {
+		/*Slot(short o, short l) {
 			offset = 0;
 			length = l;
-		}
+		}*/
 	};
 
 	short   numOfSlots;	// Number of slots available (maybe filled or empty).

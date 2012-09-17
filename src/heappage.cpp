@@ -99,7 +99,8 @@ PageID HeapPage::PageNo()
 // Return   : The pointer to the requested slot.
 //------------------------------------------------------------------
 HeapPage::Slot* HeapPage::GetSlotAtIndex(int slotNumber) {
-	return (Slot *)&data[slotNumber * sizeof(Slot)];		// wc373	NEED TO CHECK IN ADJACENT WITH AppendNewSlot
+	return (Slot *)&data[slotNumber * sizeof(Slot)];		// wc373	NEED TO CHECK WITH AppendNewSlot
+	// or, (Slot *)(data + slotNumber * sizeof(Slot));
 }
 
 //------------------------------------------------------------------
@@ -123,9 +124,10 @@ int HeapPage::GetContiguousFreeSpaceSize() {				// wc373
 //------------------------------------------------------------------
 HeapPage::Slot* HeapPage::AppendNewSlot(){					// wc373	NEED MORE THOUGHTS
 	if (GetContiguousFreeSpaceSize() >= sizeof(Slot)) {
-		Slot *newSlot = new Slot((short)++numOfSlots, -1);
-		*(data + numOfSlots * sizeof(Slot)) = *((char *)newSlot); // ????? NEED TO CONVERT FROM STRUCT TO CHAR
-		return newSlot;
+		/*Slot *newSlot = new Slot((short)++numOfSlots, -1);
+		*(data + numOfSlots * sizeof(Slot)) = *((char *)newSlot);*/ // ????? NEED TO CONVERT FROM STRUCT TO CHAR
+		freeSpace -= sizeof(Slot);
+		return GetSlotAtIndex(numOfSlots++);
 	}
 	return NULL;
 }
@@ -212,9 +214,16 @@ Status HeapPage::DeleteRecord(RecordID rid)
 // Return   : OK if successful, DONE otherwise
 //------------------------------------------------------------------
 Status HeapPage::FirstRecord(RecordID& rid)
-{
-	//TODO: add your code here
-	return FAIL;
+{															// wc373
+	if (&rid == NULL) return FAIL;
+	for (int i=0; i<numOfSlots; i++) {
+		if (GetSlotAtIndex(i)->length != -1) {
+			rid.pageNo = pid;
+			rid.slotNo = i;
+			return OK;
+		}
+	}
+	return DONE;
 }
 
 //------------------------------------------------------------------
@@ -226,8 +235,15 @@ Status HeapPage::FirstRecord(RecordID& rid)
 //            otherwise OK
 //------------------------------------------------------------------
 Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
-{
-	//TODO: add your code here
+{															// wc373
+	if (&curRid == NULL || curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
+	for (int i=curRid.slotNo+1; i<numOfSlots; i++) {
+		if (GetSlotAtIndex(i)->length != -1){
+			nextRid.pageNo = pid;
+			nextRid.slotNo = i;
+			return OK;
+		}
+	}
 	return FAIL;
 }
 
@@ -240,9 +256,15 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 // Return   : OK if successful, FAIL otherwise
 //------------------------------------------------------------------
 Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
-{
-	//TODO: add your code here
+{															// wc373
+	if (length >= sizeof(RecordID) && &rid != NULL) {
+		if (memcpy(recPtr, &rid, sizeof(RecordID)) == recPtr) {
+			length = sizeof(RecordID);
+			return OK;
+		} 
+	}
 	return FAIL;
+
 }
 
 //------------------------------------------------------------------
@@ -254,8 +276,12 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 // Return   : OK if successful, FAIL otherwise
 //------------------------------------------------------------------
 Status HeapPage::ReturnRecord(RecordID rid, char*& recPtr, int& length)
-{	
-	//TODO: add your code here
+{															// wc373	
+	if (&rid != NULL) {
+		recPtr = (char *)&rid;
+		length = sizeof(RecordID);
+		return OK;
+	}
 	return FAIL;
 }
 

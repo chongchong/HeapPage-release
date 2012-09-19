@@ -146,6 +146,14 @@ Status HeapPage::CompressPage() {
 }
 
 
+//------------------------------------------------------------------
+// HeapPage::getEmptySlot
+//
+// Input     : a short number which represents the index of an empty slot
+// Output    : the index of the first empty slot found
+// Purpose   : find the first empty slot 
+// Return    : the first empty slot found
+//------------------------------------------------------------------
 HeapPage::Slot* HeapPage::getEmptySlot(short& index){
 	short i=0;
 	for(i=0;i<numOfSlots;i++){
@@ -178,14 +186,16 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 		if (freePtr-length<0) {
 			Status cs=CompressPage();
 			if (cs==FAIL) return FAIL;
+			}
 			newslot->offset=freePtr;
 			newslot->length=length;
 			freePtr = freePtr-length;
 			rid= *(RecordID *)recPtr; // need to consider the FAIL case here --cw474
 			rid.slotNo=index;
 			rid.pageNo=pid;
+			freeSpace= freeSpace-length;
 			return OK;
-		}
+		
 
 	} 
 	else return DONE;

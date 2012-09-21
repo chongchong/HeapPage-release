@@ -3,6 +3,7 @@
 
 #include "minirel.h"
 #include "page.h"
+#include <vector>
 
 const int INVALID_SLOT = -1;
 
@@ -61,6 +62,12 @@ protected :
 
 	// Appends a new slot to the end of the slot directory.
 	Slot* AppendNewSlot();
+
+	// MergeSort
+	void MergeSort(vector<short> &arr);
+
+	// Merge
+	vector<short> Merge(vector<short> arr1, vector<short> arr2);
 
 public:
 	// Inialize the page with given PageID.

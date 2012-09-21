@@ -143,11 +143,21 @@ Status HeapPage::CompressPage() {
 	// Sort indices of all slots by descending offsets (end to beginning)
 	// Access slots by sorted indices one by one to arrange space
 	// Reset freePtr
+	cout << "will CompressPage" << endl;
 	vector<short> index;
 	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
 		index[i]=i;
 	}
-	//MergeSort(index);
+	MergeSort(index); // indices have been sorted
+	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end
+	for (short k=0;k<numOfSlots;k++) { // rearrange all records
+		Slot *slot = GetSlotAtIndex(index[k]);
+		short recordLength = slot->length;
+		if (recordLength != -1) {
+			freePtr -= recordLength;
+			if (memcpy(data+freePtr+1,data+slot->offset,recordLength) != data+freePtr+1) return FAIL;
+		}
+	}
 	return FAIL;
 }
 
@@ -231,8 +241,8 @@ Status HeapPage::DeleteRecord(RecordID rid)
 //------------------------------------------------------------------
 Status HeapPage::FirstRecord(RecordID& rid)
 {															// wc373
-	cout << "in FirstRecord" << endl;
-	if (&rid == NULL) return FAIL;
+	//cout << "in FirstRecord" << endl;
+	//if (&rid == NULL) return FAIL;
 	for (short i=0; i<numOfSlots; i++) {
 		if (GetSlotAtIndex(i)->length != -1) {
 			rid.pageNo = pid;
@@ -253,7 +263,7 @@ Status HeapPage::FirstRecord(RecordID& rid)
 //------------------------------------------------------------------
 Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 {															// wc373
-	cout << "in NextRecord" << endl;
+	//cout << "in NextRecord" << endl;
 	if (curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
 	for (short i=curRid.slotNo+1; i<numOfSlots; i++) {
 		if (GetSlotAtIndex(i)->length != -1){
@@ -262,7 +272,7 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 			return OK;
 		}
 	}
-	cout << "no more records exist on the page" << endl;
+	//cout << "no more records exist on the page" << endl;
 	return DONE;
 }
 
@@ -276,7 +286,8 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 //------------------------------------------------------------------
 Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 {															// wc373
-	cout << "in GetRecord" << endl;
+	//cout << "in GetRecord" << endl;
+	if (rid.pageNo != pid) return FAIL;
 	Slot *slot = GetSlotAtIndex(rid.slotNo);
 	short slotLength = slot->length;
 	short slotOffset = slot->offset;
@@ -301,9 +312,11 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 Status HeapPage::ReturnRecord(RecordID rid, char*& recPtr, int& length)
 {															// wc373	
 	cout << "in ReturnRecord" << endl;
-	if (&rid != NULL) {
-		recPtr = (char *)&rid;
-		length = sizeof(RecordID);
+	if (rid.pageNo != pid) return FAIL;
+	Slot *slot = GetSlotAtIndex(rid.slotNo);
+	if (slot->length != -1) {
+		recPtr = &data[slot->offset];
+		length = slot->length;			
 		return OK;
 	}
 	return FAIL;
@@ -353,12 +366,4 @@ int HeapPage::GetNumOfRecords()
 		if (GetSlotAtIndex(i)->length != -1) num++;
 	}
 	return num;
-}
-
-void MergeSort(vector<short> &arr) {
-	if (arr.size() < 2) return;
-	else {
-		int mid = arr.size()/2;
-		//MergeSort()
-	}
 }

@@ -122,6 +122,9 @@ public:
 
 	// Insert a record into the page.
 	Status InsertRecord(const char* recPtr, int recLen, RecordID& rid);
+	
+	//check if this is the last valid slot in the slot directory
+	bool HeapPage::hasNoValidSlotBefore(Slot* slot);
 
 	// Delete a record from the page.
 	Status DeleteRecord(RecordID rid);

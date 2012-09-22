@@ -218,6 +218,21 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 }
 
 //------------------------------------------------------------------
+//a helper function for DeleteRecord
+// go through all the slots before this slot
+// return true if all the slots before are invalid
+// return false otherwise
+//------------------------------------------------------------------
+bool HeapPage::hasNoValidSlotBefore(Slot* slot)
+{
+	for (int i=0;i<numOfSlots-1;i++){
+		if (!SlotIsEmpty(GetSlotAtIndex(i))) return false;
+	}
+	return true;
+}
+
+
+//------------------------------------------------------------------
 // HeapPage::DeleteRecord 
 //
 // Input    : Record ID
@@ -227,7 +242,30 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 //------------------------------------------------------------------ 
 Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 {
-	return FAIL;
+	if ((rid.pageNo!=pid) || (rid.slotNo>numOfSlots-1))return FAIL;		// are there other cases that rid may be invalid?
+	Slot *slot =GetSlotAtIndex(rid.slotNo); 
+	if (slot->length==INVALID_SLOT) return FAIL;
+	if (hasNoValidSlotBefore(slot)) { // if it's the only valid slot left
+		/*for (int i=0;i<numOfSlots;i++){
+			delete 	GetSlotAtIndex(i);
+		}	*/	// not sure if we need to reserve a new slot like when we create a new arrray
+		freeSpace =  freeSpace + numOfSlots* sizeof(Slot)+slot->length;
+		numOfSlots=0;
+	}
+	else 
+		if (rid.slotNo==numOfSlots-1) { // if it's the last slot
+		//delete slot;
+		numOfSlots--;
+		freeSpace = freeSpace + sizeof(Slot)+slot->length;
+		}
+		else {   // if it's just a normal slot
+			freeSpace=freeSpace+slot->length;
+			slot ->length= INVALID_SLOT;
+		}
+	
+
+
+	return OK;
 }
 
 //------------------------------------------------------------------

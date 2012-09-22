@@ -175,11 +175,12 @@ HeapPage::Slot* HeapPage::getEmptySlot(short& index){
 // Return    : OK if everything went OK, DONE if sufficient space is not available.
 //------------------------------------------------------------------
 Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//cw474
-{																			
+{	
+	if (length<=0) return FAIL;
 	if (AvailableSpace()>=length) {
 		short index;
 		Slot* newslot=getEmptySlot(index);
-		if (newslot ==NULL){
+		if (newslot == NULL){
 			newslot = AppendNewSlot();
 		}
 		if (newslot == NULL) return DONE;
@@ -209,10 +210,9 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 // Purpose  : Delete a record from the page
 // Return   : OK if successful, FAIL otherwise  
 //------------------------------------------------------------------ 
-Status HeapPage::DeleteRecord(RecordID rid)
+Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 {
-	//TODO: add your code here
-	return FAIL;
+	
 }
 
 //------------------------------------------------------------------

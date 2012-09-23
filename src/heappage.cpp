@@ -143,24 +143,37 @@ Status HeapPage::CompressPage() {
 	// Sort indices of all slots by descending offsets (end to beginning)
 	// Access slots by sorted indices one by one to arrange space
 	// Reset freePtr
-	cout << "will CompressPage" << endl;
+	//cout << "will CompressPage" << endl;
 	vector<short> index;
 	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
-		index[i]=i;
+		index.push_back(i);
 	}
-	MergeSort(index); // indices have been sorted
+	SortStruct s(this); // used for defining the comparison function for std::sort, see heappage.h
+	// We were told that using std::sort is allowed since it runs in O(nlogn) time on average according to the documentation
+	std::sort(index.begin(), index.end(), s);
+	//cout << "out of sort in compress" << endl;
 	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end
+	/*for (short k=0;k<numOfSlots;k++){
+		cout << "slotindex is " << index.at(k) << endl;
+	}*/
 	for (short k=0;k<numOfSlots;k++) { // rearrange all records
-		Slot *slot = GetSlotAtIndex(index[k]);
+		Slot *slot = GetSlotAtIndex(index.at(k));
 		short recordLength = slot->length;
 		if (recordLength != -1) {
 			freePtr -= recordLength;
-			if (memcpy(data+freePtr+1,data+slot->offset,recordLength) != data+freePtr+1) return FAIL;
+			short newOffset = freePtr+1;
+			if (memcpy(data+newOffset,data+slot->offset,recordLength) != data+freePtr+1) return FAIL;
+			slot->offset = newOffset;
 		}
 	}
-	return FAIL;
+	//cout << "done compressing" << endl;
+	/*for (int i=0;i<numOfSlots;i++){
+		Slot *slot = GetSlotAtIndex(i);
+		if (slot->length != INVALID_SLOT) cout << "offset of record at slot index " << i << " is " << slot->offset << endl;
+		else cout << "slot " << i << " is invalid" << endl;
+	}*/
+	return OK;
 }
-
 
 //------------------------------------------------------------------
 // HeapPage::getEmptySlot
@@ -242,7 +255,7 @@ bool HeapPage::hasNoOtherValidSlot(int slotNO)
 //------------------------------------------------------------------ 
 Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 {
-	if ((rid.pageNo!=pid) || (rid.slotNo>numOfSlots-1))return FAIL;		// are there other cases that rid may be invalid?
+	if ((rid.pageNo!=pid) || (rid.slotNo>numOfSlots-1))return FAIL;		// are there other cases that rid may be invalid?  that's it i guess...
 	Slot *slot =GetSlotAtIndex(rid.slotNo); 
 	if (slot->length==INVALID_SLOT) return FAIL;
 	if (hasNoOtherValidSlot(rid.slotNo)) { // if it's the only valid slot left
@@ -252,7 +265,7 @@ Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 		freeSpace =  freeSpace + numOfSlots* sizeof(Slot)+slot->length;
 		numOfSlots=0;
 	}
-	else 
+	else {
 		if (rid.slotNo==numOfSlots-1) { // if it's the last slot
 		//delete slot;
 		numOfSlots--;
@@ -262,9 +275,7 @@ Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 			freeSpace=freeSpace+slot->length;
 			slot ->length= INVALID_SLOT;
 		}
-	
-
-
+	}
 	return OK;
 }
 
@@ -281,7 +292,7 @@ Status HeapPage::FirstRecord(RecordID& rid)
 	//cout << "in FirstRecord" << endl;
 	//if (&rid == NULL) return FAIL;
 	for (short i=0; i<numOfSlots; i++) {
-		if (GetSlotAtIndex(i)->length != -1) {
+		if (!SlotIsEmpty(GetSlotAtIndex(i))) {
 			rid.pageNo = pid;
 			rid.slotNo = i;
 			return OK;
@@ -303,7 +314,7 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 	//cout << "in NextRecord" << endl;
 	if (curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
 	for (short i=curRid.slotNo+1; i<numOfSlots; i++) {
-		if (GetSlotAtIndex(i)->length != -1){
+		if (!SlotIsEmpty(GetSlotAtIndex(i))){
 			nextRid.pageNo = pid;
 			nextRid.slotNo = i;
 			return OK;
@@ -324,7 +335,7 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 {															// wc373
 	//cout << "in GetRecord" << endl;
-	if (rid.pageNo != pid) return FAIL;
+	if (rid.pageNo != pid || rid.slotNo >= numOfSlots) return FAIL;
 	Slot *slot = GetSlotAtIndex(rid.slotNo);
 	short slotLength = slot->length;
 	short slotOffset = slot->offset;
@@ -348,8 +359,8 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 //------------------------------------------------------------------
 Status HeapPage::ReturnRecord(RecordID rid, char*& recPtr, int& length)
 {															// wc373	
-	cout << "in ReturnRecord" << endl;
-	if (rid.pageNo != pid) return FAIL;
+	//cout << "in ReturnRecord" << endl;
+	if (rid.pageNo != pid || rid.slotNo >= numOfSlots) return FAIL;
 	Slot *slot = GetSlotAtIndex(rid.slotNo);
 	if (slot->length != -1) {
 		recPtr = &data[slot->offset];
@@ -383,7 +394,7 @@ int HeapPage::AvailableSpace(void)
 bool HeapPage::IsEmpty(void)
 {															// wc373
 	for (int i=0; i<numOfSlots; i++) {
-		if (GetSlotAtIndex(i)->length != -1) return false;
+		if (!SlotIsEmpty(GetSlotAtIndex(i))) return false;
 	}
 	return true;
 }
@@ -400,7 +411,7 @@ int HeapPage::GetNumOfRecords()
 {															// wc373
 	int num = 0;
 	for (int i=0; i<numOfSlots; i++) {
-		if (GetSlotAtIndex(i)->length != -1) num++;
+		if (!SlotIsEmpty(GetSlotAtIndex(i))) num++;
 	}
 	return num;
 }

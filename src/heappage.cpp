@@ -150,7 +150,9 @@ Status HeapPage::CompressPage() {
 		if (recordLength != -1) {
 			freePtr -= recordLength;
 			short newOffset = freePtr+1;
-			if (memcpy(data+newOffset,data+slot->offset,recordLength) != data+freePtr+1) return FAIL;
+			if (memcpy(data+newOffset,data+slot->offset,recordLength) != data+freePtr+1){
+				return FAIL;
+			}
 			slot->offset = newOffset;
 		}
 	}
@@ -206,7 +208,9 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)
 		freePtr = freePtr-length;
 		freeSpace= freeSpace-length;
 		FillSlot(newslot,freePtr+1,length);
-		if (memcpy(data + freePtr+1,recPtr,length) != data+freePtr+1) return FAIL;
+		if (memcpy(data + freePtr+1,recPtr,length) != data+freePtr+1){
+			return FAIL;
+		}
 		rid.slotNo=index;
 		rid.pageNo=pid;
 		return OK;
@@ -342,6 +346,7 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 			length = slotLength;
 			return OK;
 		} 
+		else free(recPtr);
 	}
 	return FAIL;
 }

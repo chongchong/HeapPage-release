@@ -4,7 +4,10 @@
 #include "minirel.h"
 #include "page.h"
 #include <vector>
+#include <tuple>
 #include <algorithm>
+
+using namespace std;
 
 const int INVALID_SLOT = -1;
 
@@ -64,6 +67,11 @@ protected :
 	// Appends a new slot to the end of the slot directory.
 	Slot* AppendNewSlot();
 
+	// A comparison function used for the std::sort function of std::vector
+	static bool SortByDescendingOffset(tuple<short,short>& t1, tuple<short,short>& t2){
+		return std::get<1>(t1) >= std::get<1>(t2); 
+	}
+
 	// A private struct used for the std::sort function of std::vector
 	struct SortStruct
 	{
@@ -109,6 +117,9 @@ public:
 
 	// Delete a record from the page.
 	Status DeleteRecord(RecordID rid);
+
+	// Return the offset of the last record in the record section of the data array
+	short SmallestOffset();
 
 	// To find the first record on a page.
 	Status FirstRecord(RecordID& firstRid);

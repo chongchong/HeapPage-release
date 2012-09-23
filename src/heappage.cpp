@@ -7,8 +7,6 @@
 #include "bufmgr.h"
 #include "db.h"
 
-using namespace std;
-
 //------------------------------------------------------------------
 // Constructor of HeapPage
 //
@@ -143,21 +141,21 @@ Status HeapPage::CompressPage() {
 	// Sort indices of all slots by descending offsets (end to beginning)
 	// Access slots by sorted indices one by one to arrange space
 	// Reset freePtr
-	//cout << "will CompressPage" << endl;
-	vector<short> index;
+	cout << "will CompressPage" << endl;
+	vector<tuple<short, short>> indexAndOffset;
 	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
-		index.push_back(i);
+		indexAndOffset.push_back(make_tuple(i,GetSlotAtIndex(i)->offset));
 	}
-	SortStruct s(this); // used for defining the comparison function for std::sort, see heappage.h
+	//SortStruct s(this); // used for defining the comparison function for std::sort, see heappage.h
 	// We were told that using std::sort is allowed since it runs in O(nlogn) time on average according to the documentation
-	std::sort(index.begin(), index.end(), s);
+	std::sort(indexAndOffset.begin(), indexAndOffset.end(), &HeapPage::SortByDescendingOffset);
 	//cout << "out of sort in compress" << endl;
 	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end
 	/*for (short k=0;k<numOfSlots;k++){
 		cout << "slotindex is " << index.at(k) << endl;
 	}*/
 	for (short k=0;k<numOfSlots;k++) { // rearrange all records
-		Slot *slot = GetSlotAtIndex(index.at(k));
+		Slot *slot = GetSlotAtIndex(std::get<0>(indexAndOffset.at(k)));
 		short recordLength = slot->length;
 		if (recordLength != -1) {
 			freePtr -= recordLength;
@@ -167,11 +165,11 @@ Status HeapPage::CompressPage() {
 		}
 	}
 	//cout << "done compressing" << endl;
-	/*for (int i=0;i<numOfSlots;i++){
+	for (int i=0;i<numOfSlots;i++){
 		Slot *slot = GetSlotAtIndex(i);
 		if (slot->length != INVALID_SLOT) cout << "offset of record at slot index " << i << " is " << slot->offset << endl;
 		else cout << "slot " << i << " is invalid" << endl;
-	}*/
+	}
 	return OK;
 }
 
@@ -213,8 +211,9 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 			newslot = AppendNewSlot();
 		}
 		if (newslot == NULL) return DONE;
-		if (freePtr-length<0) {
+		if (GetContiguousFreeSpaceSize()<length) {
 			Status cs=CompressPage();
+			cout << "compress function called" << endl;
 			if (cs==FAIL) return FAIL;
 		}
 		freePtr = freePtr-length;
@@ -263,20 +262,33 @@ Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 			delete 	GetSlotAtIndex(i);
 		}	*/	// not sure if we need to reserve a new slot like when we create a new arrray
 		freeSpace =  freeSpace + numOfSlots* sizeof(Slot)+slot->length;
+		freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr
 		numOfSlots=0;
 	}
 	else {
 		if (rid.slotNo==numOfSlots-1) { // if it's the last slot
-		//delete slot;
-		numOfSlots--;
-		freeSpace = freeSpace + sizeof(Slot)+slot->length;
+			//delete slot;
+			numOfSlots--;
+			freeSpace = freeSpace + sizeof(Slot)+slot->length;
 		}
 		else {   // if it's just a normal slot
 			freeSpace=freeSpace+slot->length;
 			slot ->length= INVALID_SLOT;
 		}
+		if (SmallestOffset() == GetSlotAtIndex(rid.slotNo)->offset) freePtr += slot->length;
 	}
 	return OK;
+}
+
+short HeapPage::SmallestOffset() {
+	short smallest = HEAPPAGE_DATA_SIZE;
+	for (int i=0;i<numOfSlots;i++) {
+		Slot *slot = GetSlotAtIndex(i);
+		if (slot->length != INVALID_SLOT) {
+			if (slot->offset < smallest) smallest = slot->offset;
+		}
+	}
+	return smallest;
 }
 
 //------------------------------------------------------------------

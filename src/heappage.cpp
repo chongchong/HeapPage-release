@@ -14,7 +14,7 @@
 // Output    : None
 //------------------------------------------------------------------
 void HeapPage::Init(PageID pageNo)
-{															// wc373
+{								
 	pid = pageNo;
 	nextPage = INVALID_PAGE;
 	prevPage = INVALID_PAGE;
@@ -97,8 +97,7 @@ PageID HeapPage::PageNo()
 // Return   : The pointer to the requested slot.
 //------------------------------------------------------------------
 HeapPage::Slot* HeapPage::GetSlotAtIndex(int slotNumber) {
-	return (Slot *)&data[slotNumber * sizeof(Slot)];		// wc373	NEED TO CHECK WITH AppendNewSlot
-	// or, (Slot *)(data + slotNumber * sizeof(Slot));
+	return (Slot *)&data[slotNumber * sizeof(Slot)];
 }
 
 //------------------------------------------------------------------
@@ -108,7 +107,7 @@ HeapPage::Slot* HeapPage::GetSlotAtIndex(int slotNumber) {
 // Output   : None.
 // Return   : The size of the contiguous free space region.
 //------------------------------------------------------------------
-int HeapPage::GetContiguousFreeSpaceSize() {				// wc373
+int HeapPage::GetContiguousFreeSpaceSize() {	
 	return freePtr - numOfSlots * sizeof(Slot) + 1;
 }
 
@@ -120,13 +119,12 @@ int HeapPage::GetContiguousFreeSpaceSize() {				// wc373
 // Purpose  : Increase the size of the slot directory by appending a new slot at the end.
 // Return   : A pointer to the slot appended by the function.
 //------------------------------------------------------------------
-HeapPage::Slot* HeapPage::AppendNewSlot(){					// wc373	NEED MORE THOUGHTS
+HeapPage::Slot* HeapPage::AppendNewSlot(){		
 	if (GetContiguousFreeSpaceSize() >= sizeof(Slot)) {
 		freeSpace -= sizeof(Slot);
 		return GetSlotAtIndex(numOfSlots++);
 	}
-	cout << "not enough space for new slot" << endl;
-	return NULL;
+	return NULL; // not enough space
 }
 
 //------------------------------------------------------------------
@@ -138,20 +136,14 @@ HeapPage::Slot* HeapPage::AppendNewSlot(){					// wc373	NEED MORE THOUGHTS
 // Return    : OK if everything went OK, FAIL otherwise.
 //------------------------------------------------------------------
 Status HeapPage::CompressPage() {	
-	// Sort indices of all slots by descending offsets (end to beginning)
-	// Access slots by sorted indices one by one to arrange space
-	// Reset freePtr
-	cout << "will CompressPage" << endl;
+	// First, sort tuples of <index, offset> of all slots by descending offsets (end to beginning)
 	vector<tuple<short, short>> indexAndOffset;
-	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
+	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices and offsets
 		indexAndOffset.push_back(make_tuple(i,GetSlotAtIndex(i)->offset));
 	}
 	// We were told that using std::sort is allowed since it runs in O(nlogn) time on average according to the documentation
 	std::sort(indexAndOffset.begin(), indexAndOffset.end(), &HeapPage::SortByDescendingOffset);
 	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end
-	/*for (short k=0;k<numOfSlots;k++){
-		cout << "slotindex is " << index.at(k) << endl;
-	}*/
 	for (short k=0;k<numOfSlots;k++) { // rearrange all records
 		Slot *slot = GetSlotAtIndex(std::get<0>(indexAndOffset.at(k)));
 		short recordLength = slot->length;
@@ -161,12 +153,6 @@ Status HeapPage::CompressPage() {
 			if (memcpy(data+newOffset,data+slot->offset,recordLength) != data+freePtr+1) return FAIL;
 			slot->offset = newOffset;
 		}
-	}
-	//cout << "done compressing" << endl;
-	for (int i=0;i<numOfSlots;i++){
-		Slot *slot = GetSlotAtIndex(i);
-		if (slot->length != INVALID_SLOT) cout << "offset of record at slot index " << i << " is " << slot->offset << endl;
-		else cout << "slot " << i << " is invalid" << endl;
 	}
 	return OK;
 }
@@ -179,7 +165,7 @@ Status HeapPage::CompressPage() {
 // Purpose   : find the first empty slot 
 // Return    : the first empty slot found
 //------------------------------------------------------------------
-HeapPage::Slot* HeapPage::getEmptySlot(short& index){
+HeapPage::Slot* HeapPage::GetEmptySlot(short& index){
 	short i=0;
 	for(i=0;i<numOfSlots;i++){
 		if (GetSlotAtIndex(i)->length ==-1) {
@@ -199,24 +185,22 @@ HeapPage::Slot* HeapPage::getEmptySlot(short& index){
 // Purpose   : Insert a record into the page
 // Return    : OK if everything went OK, DONE if sufficient space is not available.
 //------------------------------------------------------------------
-Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//cw474
+Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)
 {					
 	if (length<=0) return FAIL;
-	if (AvailableSpace()>=length) {
+	if (AvailableSpace()>=length) { // there is enough space on the page for a new slot (if needed) and the record
 		short index;
-		Slot* newslot=getEmptySlot(index);
-		if (newslot == NULL){
-			if (GetContiguousFreeSpaceSize()<sizeof(Slot)+length){
+		Slot* newslot=GetEmptySlot(index);
+		if (newslot == NULL){ // slot directory is full
+			if (GetContiguousFreeSpaceSize()<sizeof(Slot)+length){ // not enough space for a slot and the record in the contiguous free space area
 				Status cs=CompressPage();
-				cout << "compress function called" << endl;
 				if (cs==FAIL) return FAIL;
 			}
 			newslot = AppendNewSlot();
 		}
-		if (newslot == NULL) return DONE;
-		if (GetContiguousFreeSpaceSize()<length) {
+		//if (newslot == NULL) return DONE; 
+		if (GetContiguousFreeSpaceSize()<length) { // slot directory not full, but not enough space for a record at the end
 			Status cs=CompressPage();
-			cout << "compress function called" << endl;
 			if (cs==FAIL) return FAIL;
 		}
 		freePtr = freePtr-length;
@@ -226,26 +210,25 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 		rid.slotNo=index;
 		rid.pageNo=pid;
 		return OK;
-		
-
 	} 
 	else return DONE;
 }
 
 //------------------------------------------------------------------
-//a helper function for DeleteRecord
-// go through all the slots before this slot
-// return true if all the slots before are invalid
-// return false otherwise
+// HeapPage::HasNoOtherValidSlot
+//
+// Input    : Index of the slot that's checked against
+// Output   : If all slots before it are invalid, false otherwise
+// Purpose  : A helper function for DeleteRecord
+// Return   : True if all slots before it are invalid, false otherwise
 //------------------------------------------------------------------
-bool HeapPage::hasNoOtherValidSlot(int slotNO)
+bool HeapPage::HasNoOtherValidSlot(int slotNO)
 {
 	for (int i=0;i<numOfSlots;i++){
 		if ((i!=slotNO)&&(!SlotIsEmpty(GetSlotAtIndex(i)))) return false;
 	}
 	return true;
 }
-
 
 //------------------------------------------------------------------
 // HeapPage::DeleteRecord 
@@ -255,15 +238,12 @@ bool HeapPage::hasNoOtherValidSlot(int slotNO)
 // Purpose  : Delete a record from the page
 // Return   : OK if successful, FAIL otherwise  
 //------------------------------------------------------------------ 
-Status HeapPage::DeleteRecord(RecordID rid)   //cw474
+Status HeapPage::DeleteRecord(RecordID rid)
 {
-	if ((rid.pageNo!=pid) || (rid.slotNo>numOfSlots-1))return FAIL;		// are there other cases that rid may be invalid?  that's it i guess...
+	if ((rid.pageNo!=pid) || (rid.slotNo>numOfSlots-1))return FAIL;	
 	Slot *slot =GetSlotAtIndex(rid.slotNo); 
 	if (slot->length==INVALID_SLOT) return FAIL;
-	if (hasNoOtherValidSlot(rid.slotNo)) { // if it's the only valid slot left
-		/*for (int i=0;i<numOfSlots;i++){
-			delete 	GetSlotAtIndex(i);
-		}	*/	// not sure if we need to reserve a new slot like when we create a new arrray
+	if (HasNoOtherValidSlot(rid.slotNo)) { // if it's the only valid slot left
 		freeSpace =  freeSpace + numOfSlots* sizeof(Slot)+slot->length;
 		freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr
 		numOfSlots=0;
@@ -283,6 +263,14 @@ Status HeapPage::DeleteRecord(RecordID rid)   //cw474
 	return OK;
 }
 
+//------------------------------------------------------------------
+// HeapPage::SmallestOffset
+//
+// Input    : None
+// Output   : Offset of the last (closest to slot directory) record in the data region
+// Purpose  : A helper function for Delete to determine if the record to be deleted is the last one
+// Return   : The offset of last record 
+//------------------------------------------------------------------ 
 short HeapPage::SmallestOffset() {
 	short smallest = HEAPPAGE_DATA_SIZE;
 	for (int i=0;i<numOfSlots;i++) {
@@ -303,9 +291,7 @@ short HeapPage::SmallestOffset() {
 // Return   : OK if successful, DONE otherwise
 //------------------------------------------------------------------
 Status HeapPage::FirstRecord(RecordID& rid)
-{															// wc373
-	//cout << "in FirstRecord" << endl;
-	//if (&rid == NULL) return FAIL;
+{
 	for (short i=0; i<numOfSlots; i++) {
 		if (!SlotIsEmpty(GetSlotAtIndex(i))) {
 			rid.pageNo = pid;
@@ -325,8 +311,7 @@ Status HeapPage::FirstRecord(RecordID& rid)
 //            otherwise OK
 //------------------------------------------------------------------
 Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
-{															// wc373
-	//cout << "in NextRecord" << endl;
+{
 	if (curRid.pageNo != pid || curRid.slotNo < 0 || curRid.slotNo >= numOfSlots) return FAIL;
 	for (short i=curRid.slotNo+1; i<numOfSlots; i++) {
 		if (!SlotIsEmpty(GetSlotAtIndex(i))){
@@ -335,7 +320,6 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 			return OK;
 		}
 	}
-	//cout << "no more records exist on the page" << endl;
 	return DONE;
 }
 
@@ -348,9 +332,8 @@ Status HeapPage::NextRecord (RecordID curRid, RecordID& nextRid)
 // Return   : OK if successful, FAIL otherwise
 //------------------------------------------------------------------
 Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
-{															// wc373
-	//cout << "in GetRecord" << endl;
-	if (rid.pageNo != pid || rid.slotNo >= numOfSlots) return FAIL;
+{
+	if (rid.pageNo != pid || rid.slotNo >= numOfSlots || rid.slotNo < 0) return FAIL;
 	Slot *slot = GetSlotAtIndex(rid.slotNo);
 	short slotLength = slot->length;
 	short slotOffset = slot->offset;
@@ -361,7 +344,6 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 		} 
 	}
 	return FAIL;
-
 }
 
 //------------------------------------------------------------------
@@ -373,9 +355,8 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 // Return   : OK if successful, FAIL otherwise
 //------------------------------------------------------------------
 Status HeapPage::ReturnRecord(RecordID rid, char*& recPtr, int& length)
-{															// wc373	
-	//cout << "in ReturnRecord" << endl;
-	if (rid.pageNo != pid || rid.slotNo >= numOfSlots) return FAIL;
+{	
+	if (rid.pageNo != pid || rid.slotNo >= numOfSlots || rid.slotNo < 0) return FAIL;
 	Slot *slot = GetSlotAtIndex(rid.slotNo);
 	if (slot->length != -1) {
 		recPtr = &data[slot->offset];
@@ -394,7 +375,7 @@ Status HeapPage::ReturnRecord(RecordID rid, char*& recPtr, int& length)
 // Return   : The amount of available space on the heap file page for inserting a record.
 //------------------------------------------------------------------
 int HeapPage::AvailableSpace(void)
-{															// wc373
+{											
 	return (GetNumOfRecords()!=numOfSlots ? freeSpace : freeSpace - sizeof(Slot));
 }
 
@@ -407,7 +388,7 @@ int HeapPage::AvailableSpace(void)
 // Return   : true if the HeapPage is empty, and false otherwise.
 //------------------------------------------------------------------
 bool HeapPage::IsEmpty(void)
-{															// wc373
+{							
 	for (int i=0; i<numOfSlots; i++) {
 		if (!SlotIsEmpty(GetSlotAtIndex(i))) return false;
 	}
@@ -423,7 +404,7 @@ bool HeapPage::IsEmpty(void)
 // Return   : The number of records in the page.
 //------------------------------------------------------------------
 int HeapPage::GetNumOfRecords()
-{															// wc373
+{								
 	int num = 0;
 	for (int i=0; i<numOfSlots; i++) {
 		if (!SlotIsEmpty(GetSlotAtIndex(i))) num++;

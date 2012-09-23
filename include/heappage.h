@@ -23,7 +23,6 @@ protected :
 	{
 		short offset;	// Offset of record from the start of data area.
 		short length;	// Length of the record.
-
 	};
 
 	short   numOfSlots;	// Number of slots available (maybe filled or empty).
@@ -68,6 +67,7 @@ protected :
 	Slot* AppendNewSlot();
 
 	// A comparison function used for the std::sort function of std::vector
+	// Sorts the record offsets from end of the array to beginning
 	static bool SortByDescendingOffset(tuple<short,short>& t1, tuple<short,short>& t2){
 		return std::get<1>(t1) >= std::get<1>(t2); 
 	}
@@ -94,14 +94,14 @@ public:
 	// Get the PageID of this page.
 	PageID PageNo();
 
-	// Check if there is any empty slot
-	Slot* getEmptySlot(short& index);
+	// Get the first empty slot in the slot directory
+	Slot* GetEmptySlot(short& index);
 
 	// Insert a record into the page.
 	Status InsertRecord(const char* recPtr, int recLen, RecordID& rid);
 
-	//check if this is the last valid slot in the slot directory
-	bool HeapPage::hasNoOtherValidSlot(int slotNO);
+	// Check if slotNO is the last valid slot in the slot directory
+	bool HeapPage::HasNoOtherValidSlot(int slotNO);
 
 	// Delete a record from the page.
 	Status DeleteRecord(RecordID rid);

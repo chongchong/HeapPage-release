@@ -146,10 +146,8 @@ Status HeapPage::CompressPage() {
 	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
 		indexAndOffset.push_back(make_tuple(i,GetSlotAtIndex(i)->offset));
 	}
-	//SortStruct s(this); // used for defining the comparison function for std::sort, see heappage.h
 	// We were told that using std::sort is allowed since it runs in O(nlogn) time on average according to the documentation
 	std::sort(indexAndOffset.begin(), indexAndOffset.end(), &HeapPage::SortByDescendingOffset);
-	//cout << "out of sort in compress" << endl;
 	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end
 	/*for (short k=0;k<numOfSlots;k++){
 		cout << "slotindex is " << index.at(k) << endl;

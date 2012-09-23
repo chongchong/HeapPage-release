@@ -88,8 +88,8 @@ protected :
 		short arr1Index = 0, arr2Index = 0, resultIndex = 0;
 		short size = arr1.size() + arr2.size();
 		while (resultIndex < size) {
-			if (GetSlotAtIndex(arr1[arr1Index])->offset >= GetSlotAtIndex(arr2[arr2Index])->offset) result[resultIndex] = arr1[arr1Index++];
-			else result[resultIndex] = arr2[arr2Index++];
+			if (GetSlotAtIndex(arr1[arr1Index])->offset >= GetSlotAtIndex(arr2[arr2Index])->offset) result.push_back(arr1[arr1Index++]);
+			else result.push_back(arr2[arr2Index++]);
 			resultIndex++;
 		}
 		return result;

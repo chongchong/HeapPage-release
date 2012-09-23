@@ -146,7 +146,7 @@ Status HeapPage::CompressPage() {
 	cout << "will CompressPage" << endl;
 	vector<short> index;
 	for (short i=0;i<numOfSlots;i++) { // create a vector of slot indices
-		index[i]=i;
+		index.push_back(i);
 	}
 	MergeSort(index); // indices have been sorted
 	freePtr = HEAPPAGE_DATA_SIZE - 1; // reset freePtr to the end

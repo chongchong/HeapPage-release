@@ -72,18 +72,6 @@ protected :
 		return std::get<1>(t1) >= std::get<1>(t2); 
 	}
 
-	// A private struct used for the std::sort function of std::vector
-	struct SortStruct
-	{
-		HeapPage* m;
-		SortStruct(HeapPage* p) : m(p) {};
- 
-		bool operator() ( short i, short j ) // the comparison function for std::sort
-		{
-			 return m->GetSlotAtIndex(i)->offset >= m->GetSlotAtIndex(j)->offset;
-		}
-	};
-
 public:
 	// Inialize the page with given PageID.
 	void Init(PageID pageNo);

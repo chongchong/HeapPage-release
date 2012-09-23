@@ -208,13 +208,12 @@ Status HeapPage::InsertRecord(const char *recPtr, int length, RecordID& rid)		//
 		short index;
 		Slot* newslot=getEmptySlot(index);
 		if (newslot == NULL){
-			newslot = AppendNewSlot();
-			if (newslot==NULL) {
+			if (GetContiguousFreeSpaceSize()<sizeof(Slot)+length){
 				Status cs=CompressPage();
 				cout << "compress function called" << endl;
 				if (cs==FAIL) return FAIL;
-				newslot = AppendNewSlot();
 			}
+			newslot = AppendNewSlot();
 		}
 		if (newslot == NULL) return DONE;
 		if (GetContiguousFreeSpaceSize()<length) {

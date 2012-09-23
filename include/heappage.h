@@ -4,6 +4,10 @@
 #include "minirel.h"
 #include "page.h"
 #include <vector>
+#include <tuple>
+#include <algorithm>
+
+using namespace std;
 
 const int INVALID_SLOT = -1;
 
@@ -63,36 +67,9 @@ protected :
 	// Appends a new slot to the end of the slot directory.
 	Slot* AppendNewSlot();
 
-	// MergeSort
-	void MergeSort(vector<short> &arr) {
-		if (arr.size() < 2) return;
-		else {
-			int mid = arr.size()/2;
-			vector<short>::const_iterator first = arr.begin(),
-				half = arr.begin() + mid,
-				half2 = arr.begin() + mid+1,
-				end = arr.end();
-
-			vector<short>left(first,half);
-			vector<short>right(half2,end);
-
-			MergeSort(left);
-			MergeSort(right);
-			arr = Merge(left,right);
-		}
-	}
-
-	// Merge
-	vector<short> Merge(vector<short> arr1, vector<short> arr2) {
-		vector<short> result;
-		short arr1Index = 0, arr2Index = 0, resultIndex = 0;
-		short size = arr1.size() + arr2.size();
-		while (resultIndex < size) {
-			if (GetSlotAtIndex(arr1[arr1Index])->offset >= GetSlotAtIndex(arr2[arr2Index])->offset) result.push_back(arr1[arr1Index++]);
-			else result.push_back(arr2[arr2Index++]);
-			resultIndex++;
-		}
-		return result;
+	// A comparison function used for the std::sort function of std::vector
+	static bool SortByDescendingOffset(tuple<short,short>& t1, tuple<short,short>& t2){
+		return std::get<1>(t1) >= std::get<1>(t2); 
 	}
 
 public:
@@ -122,12 +99,15 @@ public:
 
 	// Insert a record into the page.
 	Status InsertRecord(const char* recPtr, int recLen, RecordID& rid);
-	
+
 	//check if this is the last valid slot in the slot directory
 	bool HeapPage::hasNoOtherValidSlot(int slotNO);
 
 	// Delete a record from the page.
 	Status DeleteRecord(RecordID rid);
+
+	// Return the offset of the last record in the record section of the data array
+	short SmallestOffset();
 
 	// To find the first record on a page.
 	Status FirstRecord(RecordID& firstRid);

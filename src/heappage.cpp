@@ -346,7 +346,6 @@ Status HeapPage::GetRecord(RecordID rid, char *recPtr, int& length)
 			length = slotLength;
 			return OK;
 		} 
-		else free(recPtr);
 	}
 	return FAIL;
 }

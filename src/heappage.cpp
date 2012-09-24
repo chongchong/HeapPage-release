@@ -249,16 +249,22 @@ Status HeapPage::DeleteRecord(RecordID rid)
 		numOfSlots=0;
 	}
 	else {
+		if (SmallestOffset() == slot->offset) freePtr += slot->length; // increase freePtr if deleted record is the last
 		if (rid.slotNo==numOfSlots-1) { // if it's the last slot
 			//delete slot;
 			numOfSlots--;
 			freeSpace = freeSpace + sizeof(Slot)+slot->length;
+			int k=numOfSlots-1;
+			while (k>=0){ //  delete previous slots (that are now the last ones) that might be invalid
+				if (SlotIsEmpty(GetSlotAtIndex(k))) numOfSlots--;
+				else break;
+				k--;
+			}
 		}
 		else {   // if it's just a normal slot
 			freeSpace=freeSpace+slot->length;
 			slot ->length= INVALID_SLOT;
 		}
-		if (SmallestOffset() == GetSlotAtIndex(rid.slotNo)->offset) freePtr += slot->length;
 	}
 	return OK;
 }

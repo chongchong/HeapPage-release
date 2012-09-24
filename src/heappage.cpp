@@ -260,10 +260,13 @@ Status HeapPage::DeleteRecord(RecordID rid)
 			freeSpace = freeSpace + sizeof(Slot)+slot->length;
 			int k=numOfSlots-1;
 			while (k>=0){ //  delete previous slots (that are now the last ones) that might be invalid
-				if (SlotIsEmpty(GetSlotAtIndex(k))) numOfSlots--;
+				if (SlotIsEmpty(GetSlotAtIndex(k))) {
+					numOfSlots--;
+					freeSpace += sizeof(Slot);
+				}
 				else break;
 				k--;
-			}
+			} 
 		}
 		else {   // if it's just a normal slot
 			freeSpace=freeSpace+slot->length;
